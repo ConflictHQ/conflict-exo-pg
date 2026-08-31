@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Aurora at zero — Astrolift demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand" id="brand">Aurora at zero<small id="brand-slug">—</small></div>
+    <nav>
+      <a class="is-active" href="#overview">Overview</a>
+      <a href="#coldstart">Cold start</a>
+      <a href="#distribution">Distribution</a>
+    </nav>
+    <footer>
+      <div>running on Astrolift</div>
+      <div id="f-engine">engine —</div>
+      <div id="f-version">version —</div>
+      <div id="f-pod">pod —</div>
+      <div id="f-seed">seed —</div>
+      <div style="margin-top:.6rem"><a href="/debug">/debug</a> · <a href="/selftest">/selftest</a></div>
+    </footer>
+  </aside>
+
+  <main class="main">
+    <div class="head">
+      <div>
+        <h1 id="overview">Aurora Serverless v2, minimum capacity zero</h1>
+        <p id="lede">The database behind this page scales its compute to <strong>0 ACU</strong>
+           after five idle minutes. While nobody is looking at it, only storage is
+           billed. The first query afterwards pays a resume — measured below rather
+           than hidden behind a connection pool.</p>
+      </div>
+      <span class="status status--ok" id="health">healthy</span>
+    </div>
+
+    <section class="tiles" id="tiles"></section>
+
+    <div class="grid">
+      <section class="panel span-12">
+        <div class="panel-head">
+          <h2 id="coldstart">Connection latency, most recent first</h2>
+          <span class="hint">a bar past the marker is a resume from zero</span>
+        </div>
+        <div class="panel-body">
+          <div id="c-connect"></div>
+          <div id="t-connect"></div>
+        </div>
+      </section>
+
+      <section class="panel span-7">
+        <div class="panel-head">
+          <h2 id="distribution">Distribution</h2>
+          <span class="hint">hover for the bucket</span>
+        </div>
+        <div class="panel-body"><div id="c-buckets"></div></div>
+      </section>
+
+      <section class="panel span-5">
+        <div class="panel-head">
+          <h2>Leaders</h2>
+          <span class="hint">top rows</span>
+        </div>
+        <div class="panel-body"><div id="t-top"></div></div>
+      </section>
+    </div>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+<script src="/app.js"></script>
+</body>
+</html>

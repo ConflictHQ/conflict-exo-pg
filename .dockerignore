@@ -1,0 +1,6 @@
+.git
+.gitignore
+README.md
+astrolift.toml
+__pycache__/
+*.pyc
