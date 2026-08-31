@@ -58,23 +58,28 @@ function connectChart(host, rows) {
   }
   const W = 1000, H = 260, m = { t: 16, r: 14, b: 34, l: 62 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const { ticks, top: max } = niceTicks(Math.max(...rows.map((d) => d.connect_ms), RESUME_MS * 1.2));
-  const step = iw / rows.length;
-  const bw = Math.max(2, step - 2);
-  const y = (v) => ih - (v / max) * ih;
+
+  // Log scale, because the two regimes this chart exists to compare are three
+  // orders of magnitude apart: a warm connect is ~10ms and a resume from 0 ACU
+  // is seconds. On a linear axis scaled to clear the 2s threshold, every warm
+  // bar collapses onto the baseline -- so the chart read as empty in exactly
+  // the case where everything is working.
+  const lo = 1;
+  const hi = Math.max(...rows.map((d) => d.connect_ms), RESUME_MS * 2);
+  const ly = (v) => Math.log10(Math.max(v, lo));
+  const y = (v) => ih - ((ly(v) - ly(lo)) / (ly(hi) - ly(lo))) * ih;
 
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
-    "aria-label": "Database connection latency, most recent first" });
+    "aria-label": "Database connection latency, most recent first, log scale" });
   const g = el("g", { transform: `translate(${m.l},${m.t})` });
 
-  for (const v of ticks) {
+  for (let p = 0; 10 ** p <= hi; p++) {
+    const v = 10 ** p;
     g.appendChild(el("line", { class: "gridline", x1: 0, x2: iw, y1: y(v), y2: y(v) }));
     g.appendChild(el("text", { class: "axis", x: -8, y: y(v) + 3.5, "text-anchor": "end" },
-      [document.createTextNode(fmt(v))]));
+      [document.createTextNode(v >= 1000 ? `${v / 1000}s` : `${v}ms`)]));
   }
 
-  // The resume threshold, drawn as a reference line so a long bar is readable
-  // as "the cluster was asleep" rather than just "this one was slow".
   g.appendChild(el("line", {
     x1: 0, x2: iw, y1: y(RESUME_MS), y2: y(RESUME_MS),
     stroke: WARN, "stroke-width": 1, "stroke-dasharray": "4 3", "stroke-opacity": ".7",
@@ -83,10 +88,12 @@ function connectChart(host, rows) {
     class: "axis", x: iw, y: y(RESUME_MS) - 6, "text-anchor": "end", fill: WARN,
   }, [document.createTextNode("resume threshold 2s")]));
 
+  const step = iw / rows.length;
+  const bw = Math.max(2, step - 2);
   rows.forEach((d, i) => {
-    const h = ih - y(d.connect_ms);
+    const top = y(d.connect_ms);
     const p = el("path", {
-      d: barPath(i * step, y(d.connect_ms), bw, h, 4),
+      d: barPath(i * step, top, bw, ih - top, 4),
       fill: d.likely_resume ? WARN : LEAD,
     });
     p.addEventListener("mousemove", (e) => showTip(e,
@@ -99,7 +106,7 @@ function connectChart(host, rows) {
 
   g.appendChild(el("line", { class: "axis", x1: 0, x2: iw, y1: ih, y2: ih }));
   g.appendChild(el("text", { class: "axis", x: iw / 2, y: ih + 28, "text-anchor": "middle" },
-    [document.createTextNode("connection latency (ms) — newest on the left")]));
+    [document.createTextNode("connection latency, log scale — newest on the left")]));
   svg.appendChild(g);
 
   const legend = document.createElement("div");
