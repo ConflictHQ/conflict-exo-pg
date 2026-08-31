@@ -1,0 +1,73 @@
+# Managed by Astrolift — do not edit by hand. Re-sync via Settings → CI setup → Sync workflow file.
+# astrolift-managed: template-version=6 sha256=24f5344f86e3eda2
+name: astrolift deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  # Concurrency groups are already repository-scoped by GitHub. Keep the key
+  # bounded to the app slug: refs can be arbitrarily long, and this workflow
+  # deploys only the configured branch (plus explicit manual dispatches).
+  group: astrolift-conflict-exo-pg
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::790347818717:role/astrolift-conflict-conflict-exo-pg-ecr-push
+          aws-region: us-west-2
+          role-session-name: astrolift-${{ github.run_id }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Check for existing image
+        id: image_exists
+        env:
+          ECR_REPO: conflict/conflict-exo-pg
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPO" --image-ids imageTag=${{ github.sha }} >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Image for ${{ github.sha }} already in the registry — skipping build (immutable tags reject re-pushes)."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push image
+        if: steps.image_exists.outputs.exists != 'true'
+        env:
+          IMAGE: 790347818717.dkr.ecr.us-west-2.amazonaws.com/conflict/conflict-exo-pg:${{ github.sha }}
+        run: |
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+
+      - name: Notify Astrolift
+        env:
+          API_URL: http://localhost:3000
+          APP_SLUG: conflict-exo-pg
+          TOKEN: ${{ secrets.ASTROLIFT_DEPLOY_TOKEN }}
+        run: |
+          code=$(curl -sS -o /tmp/astrolift-deploy-response.json -w '%{http_code}' -X POST "$API_URL/api/cli/v1/apps/$APP_SLUG/deploy/" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"image_tags\":{\"*\":\"${{ github.sha }}\"},\"commit_sha\":\"${{ github.sha }}\",\"branch\":\"${{ github.ref_name }}\",\"trigger_kind\":\"ci\"}")
+          cat /tmp/astrolift-deploy-response.json; echo
+          case "$code" in
+            2*) echo "Astrolift accepted the deploy (HTTP $code)." ;;
+            *) echo "Astrolift deploy notification FAILED (HTTP $code) — a redirect or auth layer counts as failure."; exit 1 ;;
+          esac
