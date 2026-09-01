@@ -58,7 +58,7 @@ jobs:
 
       - name: Notify Astrolift
         env:
-          API_URL: http://localhost:3000
+          API_URL: https://astrolift.astro.conflict.cloud
           APP_SLUG: conflict-exo-pg
           TOKEN: ${{ secrets.ASTROLIFT_DEPLOY_TOKEN }}
         run: |
