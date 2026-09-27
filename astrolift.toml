@@ -47,7 +47,7 @@ engine_version = "16.6"
 class = "alb"
 
 [ingress.auth]
-kind = "cognito"
-user_pool_arn = "arn:aws:cognito-idp:us-west-2:790347818717:userpool/us-west-2_xU96Y7DAg"
-user_pool_client_id = "1e3f2egf7ibju4c9rnldk98cvv"
-user_pool_domain = "conflict"
+kind = "oidc"
+auth_proxy_host = "auth.astro.conflict.cloud"
+discovery_url = "https://cognito-idp.us-west-2.amazonaws.com/us-west-2_xU96Y7DAg/.well-known/openid-configuration"
+client_id = "1unkru25uqbon23mnhj2cpv3hd"
